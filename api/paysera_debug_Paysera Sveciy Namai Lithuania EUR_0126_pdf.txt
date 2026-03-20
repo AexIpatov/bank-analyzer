@@ -1,0 +1,46 @@
+Signed: 2026-02-01 20:34:22 +0100
+Signed by:
+Currencies EUR
+Start balance:
+4599.89 EUR
+Final balance:
+4394.89 EUR
+Debit turnover:
+-205.00 EUR
+Credit turnover:
+0.00 EUR
+Account Statement 2026-01-01 - 2026-01-31
+Client Svečių namai, UAB
+Client's code 305246699
+Client's address Bazilijonų gatvė 10A, Vilnius, LT-01304, Vilniaus apskritis, Lithuania
+Account EVP0810011688673 (LT033500010011688673)
+Type 
+Date and time
+Statement
+No. 
+Payment ID
+Recipient / Payer (Code)
+EVP / IBAN
+Amount and
+currency
+Balance
+Transfer
+2026-01-01 18:59:29
++0100
+1681401116
+815527605
+Delvia MB
+LT937300010195283438
+-200.00 EUR 
+4399.89 EUR
+Purpose of payment: Invoice DELV No. 00016
+Commission fee
+2026-01-03 06:02:58
++0100
+1681832890
+Paysera LT (300060819)
+-5.00 EUR 
+4394.89 EUR
+Purpose of payment: Sąskaitos palaikymo mokestis.
+Signed: 2026-02-01 21:34:22 +0200 
+Signed by: Paysera LT, UAB 

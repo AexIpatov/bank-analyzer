@@ -1,0 +1,8 @@
+﻿Account Title;Account;Currency;Balance
+BEZNY UCET (PO);8450807027;CZK;3064,00
+From Account;Amount;Currency;Booking Date;Value Date;Bank;Bank Name;Bank Name;Account;Name;Address;Address;Address;Transaction Details;Transaction Details;Transaction Details;Transaction Details;Transaction Details;Transaction Details;Constant Code;Variable Code;Specific Code;MNB Code;Reference Number;TPP Registration Number;TPP Name;TPP Payment Reference;TPP Country of Registration;TPP National Authority Code
+8450807027;-200,00;CZK;2026-02-27;2026-02-27;;;;;;;;;POPL.VEDENI.UCTU;;;;;;;;;;0;;;;;
+8450807027;-21,00;CZK;2026-02-27;2026-02-27;;;;;;;;;POPL.TUZ.PL.ODCH.ST.TP;3x7,00;;;;;;;;;0;;;;;
+8450807027;-1887,00;CZK;2026-02-05;2026-02-05;5500;Raiffeisenbank a.s.;;5003012181;SNKV;;;;;;;;;;;4;;;1237546805;;;;;
+8450807027;-2000,00;CZK;2026-02-05;2026-02-05;0100;Komerční banka, a.s.;;7770227;ČEZ;;;;;;;;;;;7739644900;;;1237546800;;;;;
+8450807027;-2000,00;CZK;2026-02-05;2026-02-05;0100;Komerční banka, a.s.;;7770227;ČEZ;;;;;;;;;;;7739652000;;;1237546798;;;;;

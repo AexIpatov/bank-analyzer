@@ -1,0 +1,12 @@
+﻿Account Title;Account;Currency;Balance
+BEZNY UCET (PO);6830216019;CZK;162983,80
+From Account;Amount;Currency;Booking Date;Value Date;Bank;Bank Name;Bank Name;Account;Name;Address;Address;Address;Transaction Details;Transaction Details;Transaction Details;Transaction Details;Transaction Details;Transaction Details;Constant Code;Variable Code;Specific Code;MNB Code;Reference Number;TPP Registration Number;TPP Name;TPP Payment Reference;TPP Country of Registration;TPP National Authority Code
+6830216019;-200,00;CZK;2026-02-27;2026-02-27;;;;;;;;;POPL.VEDENI.UCTU;;;;;;;;;;0;;;;;
+6830216019;-7,00;CZK;2026-02-27;2026-02-27;;;;;;;;;POPL.TUZ.OK.ODCH.INTC.EL;1x7,00;;;;;;;;;0;;;;;
+6830216019;-7,00;CZK;2026-02-27;2026-02-27;;;;;;;;;POPL.TUZ.OK.PRICH.INH.;1x7,00;;;;;;;;;0;;;;;
+6830216019;-7,00;CZK;2026-02-27;2026-02-27;;;;;;;;;POPL.TUZ.OK.PRICHOZI;1x7,00;;;;;;;;;0;;;;;
+6830216019;-7,00;CZK;2026-02-27;2026-02-27;;;;;;;;;POPL.TUZ.PL.PRICH.ST.;1x7,00;;;;;;;;;0;;;;;
+6830216019;12000,00;CZK;2026-02-26;2026-02-26;2010;Fio banka, a.s.;Vítezná 126/1;2603402286;BASTET TRADING s.r.o.;;;;najem 2.2026 Bastet trading s.r.o;;;;;;;;;;1072260576994244;;;;;
+6830216019;36300,00;CZK;2026-02-17;2026-02-17;0300;Československá obchodní banka, a. s;.;300531284;RESTCO KV S.R.O.;;;;;;;;;;;22607;;;1243406750;;;;;
+6830216019;-17800,00;CZK;2026-02-02;2026-02-02;2700;UniCredit Bank CZ and SK;Želetavská 1525/1;2109445600;KORUNA Karlovy Vary a.s.;T.G.Masaryka 825/45 36001,KARLOVY V;ARY;;2.2.9 OB;;;;;;;;;;1272260330623349;;;;;
+6830216019;30000,00;CZK;2026-02-03;2026-02-02;2700;UniCredit Bank CZ and SK;Želetavská 1525/1;513309003;KOMPLEKT - servis plus s.r.o.;Lesov 103 36001,SADOV;;;;;;;;;;22610;;;1272260330692224;;;;;

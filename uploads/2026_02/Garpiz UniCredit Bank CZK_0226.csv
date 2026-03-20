@@ -1,0 +1,10 @@
+﻿Account Title;Account;Currency;Balance
+BUSINESS TOP (PO);2111080735;CZK;234078,86
+From Account;Amount;Currency;Booking Date;Value Date;Bank;Bank Name;Bank Name;Account;Name;Address;Address;Address;Transaction Details;Transaction Details;Transaction Details;Transaction Details;Transaction Details;Transaction Details;Constant Code;Variable Code;Specific Code;MNB Code;Reference Number;TPP Registration Number;TPP Name;TPP Payment Reference;TPP Country of Registration;TPP National Authority Code
+2111080735;-350,00;CZK;2026-02-27;2026-02-27;;;;;;;;;POPL.BALICEK.SLUZEB;;;;;;;;;;0;;;;;
+2111080735;-120,00;CZK;2026-02-27;2026-02-27;;;;;;;;;POPL.VYPIS.POSTOU.CR;1x120,00;;;;;;;;;0;;;;;
+2111080735;47,88;CZK;2026-02-27;2026-02-27;;;;;;;;;UROK DO        28/02/26;;;;;;;;;;0;;;;;
+2111080735;-1935,00;CZK;2026-02-24;2026-02-24;0300;Československá obchodní banka, a. s;Radlická 333/150;215664656;;;;;;;;;;;;1085500022;;;1172260556508983;;;;;
+2111080735;-315000,00;CZK;2026-02-17;2026-02-17;0800;Česká spořitelna, a.s.;Vodickova 701/34;154799329;;;;;Rezervacni smlouva;;;;;;;;;;1172260484867428;;;;;
+2111080735;324135,00;CZK;2026-02-13;2026-02-13;;;;;;;;;FX SPOT/FWD PAYMENT;EUR 13500,00 @24.01;;;;;;;;;0;;;;;
+2111080735;-5613,00;CZK;2026-02-02;2026-02-02;0300;Československá obchodní banka, a. s;.;215664656;Ikon s.r.o.;;;;;;;;;;;;;;1236195130;;;;;

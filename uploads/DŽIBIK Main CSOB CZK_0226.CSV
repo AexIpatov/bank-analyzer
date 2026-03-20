@@ -1,0 +1,11 @@
+account number;account currency;alias;account name;posting date;value date;payment amount;payment currency;balance;constant code/fee code;variable code/reference;specific code;transaction type;counterparty;counterparty's account;message to beneficiary and payer;identification;sent payment amount;sent payment currency;note;name of 3rd party;3rd party identifier;ultimate debtor;ultimate beneficiary;counterparty's bank;exchange rate;BIC/SWIFT;bank´s reference;purpose of payment;message to payer
+215410621/0300 ;CZK;Main;DZIBIK GROUP S.R.O.;28.2.2026;;-215,00;CZK;29559,43;;;;Acc. maintenance, statements and trans. ;;;;;;;;;;;;;;;2705
+215410621/0300 ;CZK;Main;DZIBIK GROUP S.R.O.;28.2.2026;;-7,50;CZK;29774,43;;;;Charge accounting ;CEB Info - SMS;;;;;;;;;;;;;;2704
+215410621/0300 ;CZK;Main;DZIBIK GROUP S.R.O.;27.2.2026;;-350,00;CZK;29781,93;6898;295000057;2178255139;Payment card fee ;;;Místo: POPL.MC BUSINESS GOLD CTL Èástka: 350 CZK 26.02.2026;;350,00;CZK;;;;;;;;;2703
+215410621/0300 ;CZK;Main;DZIBIK GROUP S.R.O.;25.2.2026;;-2500,00;CZK;30131,93;1178;201000056;2178255139;Debit card transaction ;;;Amount: 2500 CZK 24.02.2026 Place: CSOB 1492 PRAHA 5 Praha 13 - St  ;;2500,00;CZK;;;;;;;;;2702
+215410621/0300 ;CZK;Main;DZIBIK GROUP S.R.O.;17.2.2026;;-19351,68;CZK;32631,93;0968;;;Noncash transfer EB ;DZIBIK GROUP S.R.O.;292387576/0300; ;;;;;;;;;;;;2699
+215410621/0300 ;CZK;Main;DZIBIK GROUP S.R.O.;17.2.2026;;19351,68;CZK;51983,61;;137723701;;Non-chargeable transfer ;DŽIBIK Group s.r.o.;288756156/0300;;;800,00;EUR;;;;;;;;;2698
+215410621/0300 ;CZK;Main;DZIBIK GROUP S.R.O.;16.2.2026;;-8655,00;CZK;32631,93;0308;24;;El. banking standing order number 54;;2701727682/2010;;;;;;;;;;;;;2696
+215410621/0300 ;CZK;Main;DZIBIK GROUP S.R.O.;16.2.2026;;-895,00;CZK;41286,93;0308;2695151;;El. banking standing order number 147;;2600319970/2010;;;;;;;;;;;;;2694
+215410621/0300 ;CZK;Main;DZIBIK GROUP S.R.O.;11.2.2026;;28500,00;CZK;42181,93;;242020;;Incoming instant payment ;BILYCH NADIIA;305232929/0300;Bilych Nadiia;;;;;;;;;;;;2693
+215410621/0300 ;CZK;Main;DZIBIK GROUP S.R.O.;11.2.2026;;-8000,00;CZK;13681,93;1178;201000042;2178255139;Debit card transaction ;;;Amount: 8000 CZK 10.02.2026 Place: CSOB 1289 PRAHA 5 Praha 5  ;;8000,00;CZK;;;;;;;;;2692
