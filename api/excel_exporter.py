@@ -4,6 +4,7 @@ import os
 from parsers.bank_parser import BankParser
 from data.load_dictionaries import dictionaries
 from parsers.finclassifier import FinClassifier
+from parsers.paysera_excel_parser import parse_paysera_excel, can_parse as paysera_excel_can_parse
 
 class ExcelExporter:
     def __init__(self):
