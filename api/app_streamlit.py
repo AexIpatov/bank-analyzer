@@ -4,12 +4,8 @@ import os
 import tempfile
 import io
 import sys
+import re
 from datetime import datetime
-from excel_exporter import ExcelExporter
-
-# ВРЕМЕННАЯ ОТЛАДКА
-st.write("=== ОТЛАДКА: app_streamlit.py загружен ===")
-st.write(f"Python version: {sys.version}")
 
 # === НАСТРОЙКА СТРАНИЦЫ ===
 st.set_page_config(
@@ -22,7 +18,6 @@ st.set_page_config(
 # === КАСТОМНЫЙ CSS ДЛЯ КРАСОТЫ ===
 st.markdown("""
 <style>
-    /* Главный заголовок */
     .main-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 1.5rem;
@@ -41,7 +36,6 @@ st.markdown("""
         margin: 0.5rem 0 0;
         opacity: 0.9;
     }
-    /* Карточки */
     .card {
         background: white;
         padding: 1rem;
@@ -50,7 +44,6 @@ st.markdown("""
         margin-bottom: 1rem;
         border: 1px solid #eef2f7;
     }
-    /* Кнопки */
     .stButton > button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
@@ -63,16 +56,6 @@ st.markdown("""
     .stButton > button:hover {
         transform: translateY(-2px);
         box-shadow: 0 5px 15px rgba(102,126,234,0.4);
-    }
-    /* Успешные сообщения */
-    .stAlert {
-        border-radius: 10px;
-        border-left: 4px solid #10b981;
-    }
-    /* Dataframe */
-    .dataframe {
-        border-radius: 10px;
-        overflow: hidden;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -100,8 +83,7 @@ with st.sidebar:
         • 📌 Статья расхода/дохода<br>
         • 🧭 Направление и субнаправление<br>
         • 📝 Описание<br><br>
-        <b>🎓 Обучено на:</b> 299 примерах из Финтабло<br>
-        <b>🤖 ИИ:</b> DeepSeek API для классификации
+        <b>🎓 Обучено на:</b> 299 примерах из Финтабло
     </div>
     """, unsafe_allow_html=True)
     
@@ -112,12 +94,74 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# === ИНИЦИАЛИЗАЦИЯ ===
-@st.cache_resource
-def get_exporter():
-    return ExcelExporter()
-
-exporter = get_exporter()
+# === ФУНКЦИЯ ПАРСЕРА PAYSERA ===
+def parse_paysera_direct(file_content, file_name):
+    """Прямой парсер для Paysera Excel"""
+    try:
+        # Сохраняем во временный файл
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xls') as tmp:
+            tmp.write(file_content)
+            tmp_path = tmp.name
+        
+        # Читаем Excel с заголовками на 3-й строке (индекс 2)
+        df = pd.read_excel(tmp_path, sheet_name=0, header=2)
+        
+        os.unlink(tmp_path)
+        
+        st.write(f"📊 Парсер: найдено столбцов: {list(df.columns)}")
+        st.write(f"📊 Парсер: строк с данными: {len(df)}")
+        
+        transactions = []
+        
+        for idx, row in df.iterrows():
+            # Пропускаем пустые строки
+            if pd.isna(row.iloc[0]) and pd.isna(row.iloc[1]):
+                continue
+            
+            # Получаем дату (столбец 3)
+            date_str = str(row.iloc[3]) if len(row) > 3 else ""
+            date = date_str[:10] if len(date_str) >= 10 else ""
+            
+            # Получаем сумму (столбец 7)
+            amount_str = str(row.iloc[7]) if len(row) > 7 else ""
+            amount = 0
+            amount_match = re.search(r'([-]?\d+[.,]?\d*)', amount_str)
+            if amount_match:
+                try:
+                    amount = float(amount_match.group(1).replace(',', '.'))
+                except:
+                    amount = 0
+            
+            # Определяем знак по типу (столбец 0)
+            type_val = str(row.iloc[0]).lower() if len(row) > 0 else ""
+            if 'commission' in type_val or 'fee' in type_val:
+                amount = -abs(amount)
+            
+            # Описание (столбец 4)
+            description = str(row.iloc[4]) if len(row) > 4 and pd.notna(row.iloc[4]) else ""
+            if not description:
+                description = type_val
+            
+            if date and amount != 0:
+                transactions.append({
+                    'date': date,
+                    'amount': amount,
+                    'currency': 'EUR',
+                    'account_name': os.path.splitext(file_name)[0],
+                    'description': description[:200],
+                    'article_name': '',
+                    'article_code': '',
+                    'direction': '',
+                    'subdirection': ''
+                })
+                st.write(f"✅ Найдена транзакция: {date} | {amount} | {description[:50]}")
+        
+        st.write(f"📊 Итого найдено транзакций: {len(transactions)}")
+        return transactions
+        
+    except Exception as e:
+        st.error(f"Ошибка в парсере: {e}")
+        return []
 
 # === ОСНОВНОЙ ИНТЕРФЕЙС ===
 tab1, tab2 = st.tabs(["📂 **Один файл**", "📚 **Несколько файлов**"])
@@ -141,28 +185,19 @@ with tab1:
                 try:
                     content = uploaded_file.read()
                     
-                    # ===== ОТЛАДКА =====
                     st.write("=== ОТЛАДКА: НАЧАЛО АНАЛИЗА ===")
                     st.write(f"Имя файла: {uploaded_file.name}")
                     st.write(f"Размер файла: {len(content)} байт")
                     
-                    # Пробуем прочитать Excel напрямую для отладки
-                    try:
-                        df_test = pd.read_excel(io.BytesIO(content), header=None)
-                        st.write(f"Excel прочитан успешно, строк: {len(df_test)}")
-                        st.write("Первые 5 строк файла:")
-                        for i in range(min(5, len(df_test))):
-                            row_values = [str(x) for x in df_test.iloc[i].values[:8] if pd.notna(x)]
-                            st.write(f"  Строка {i}: {row_values}")
-                    except Exception as e:
-                        st.write(f"Ошибка при чтении Excel: {e}")
+                    # Используем прямой парсер для Paysera
+                    if 'paysera' in uploaded_file.name.lower():
+                        transactions = parse_paysera_direct(content, uploaded_file.name)
+                    else:
+                        st.warning("Это не файл Paysera, используйте другой парсер")
+                        transactions = []
                     
-                    # Вызываем парсер
-                    transactions = exporter.extract_transactions(content, uploaded_file.name)
-                    
-                    st.write(f"Транзакций найдено парсером: {len(transactions) if transactions else 0}")
+                    st.write(f"Транзакций найдено: {len(transactions)}")
                     st.write("=== ОТЛАДКА: КОНЕЦ ===")
-                    # ===== КОНЕЦ ОТЛАДКИ =====
 
                     if transactions:
                         df = pd.DataFrame([{
@@ -170,7 +205,7 @@ with tab1:
                             'Сумма': t.get('amount', 0),
                             'Валюта': t.get('currency', 'EUR'),
                             'Счет': os.path.splitext(uploaded_file.name)[0],
-                            'Статья': t.get('article_name', t.get('article_code', 'Требует уточнения')),
+                            'Статья': t.get('article_name', 'Требует уточнения'),
                             'Направление': t.get('direction', 'Требует уточнения'),
                             'Субнаправление': t.get('subdirection', ''),
                             'Описание': t.get('description', '')[:100]
@@ -208,82 +243,3 @@ with tab1:
                         st.warning("⚠️ Не найдено транзакций в файле. Проверьте формат.")
                 except Exception as e:
                     st.error(f"❌ Ошибка при обработке: {str(e)}")
-                    st.write("=== ОТЛАДКА: ОШИБКА ===")
-                    st.write(f"Тип ошибки: {type(e).__name__}")
-                    st.write(f"Текст ошибки: {str(e)}")
-
-# ========== ВКЛАДКА 2: НЕСКОЛЬКО ФАЙЛОВ ==========
-with tab2:
-    st.markdown("### Загрузите несколько выписок для сводного анализа")
-    
-    uploaded_files = st.file_uploader(
-        "Выберите файлы с выписками",
-        type=['csv', 'xlsx', 'xls'],
-        accept_multiple_files=True,
-        key="multiple",
-        help="Можно выбрать несколько файлов одновременно"
-    )
-
-    if uploaded_files:
-        st.info(f"📄 **Выбрано файлов:** {len(uploaded_files)}")
-        
-        if st.button("🚀 **Запустить анализ всех файлов**", key="multi_btn", use_container_width=True):
-            all_transactions = []
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-
-            for i, uploaded_file in enumerate(uploaded_files):
-                status_text.text(f"🔄 Обработка: {uploaded_file.name}")
-                try:
-                    content = uploaded_file.read()
-                    transactions = exporter.extract_transactions(content, uploaded_file.name)
-                    if transactions:
-                        for t in transactions:
-                            t['source_file'] = uploaded_file.name
-                        all_transactions.extend(transactions)
-                except Exception as e:
-                    st.error(f"❌ Ошибка в файле {uploaded_file.name}: {str(e)}")
-                progress_bar.progress((i + 1) / len(uploaded_files))
-
-            status_text.text("✅ Обработка завершена!")
-
-            if all_transactions:
-                df_all = pd.DataFrame([{
-                    'Дата': t.get('date', ''),
-                    'Сумма': t.get('amount', 0),
-                    'Валюта': t.get('currency', 'EUR'),
-                    'Счет': os.path.splitext(t.get('source_file', ''))[0],
-                    'Исходный файл': t.get('source_file', ''),
-                    'Статья': t.get('article_name', t.get('article_code', 'Требует уточнения')),
-                    'Направление': t.get('direction', 'Требует уточнения'),
-                    'Субнаправление': t.get('subdirection', ''),
-                    'Описание': t.get('description', '')[:100]
-                } for t in all_transactions])
-
-                # Статистика
-                st.markdown("---")
-                col_a, col_b, col_c = st.columns(3)
-                with col_a:
-                    st.metric("📊 Всего операций", len(all_transactions))
-                with col_b:
-                    доход = df_all[df_all['Сумма'] > 0]['Сумма'].sum() if len(df_all[df_all['Сумма'] > 0]) > 0 else 0
-                    st.metric("📈 Доходы", f"{доход:,.2f} €")
-                with col_c:
-                    расход = abs(df_all[df_all['Сумма'] < 0]['Сумма'].sum()) if len(df_all[df_all['Сумма'] < 0]) > 0 else 0
-                    st.metric("📉 Расходы", f"{расход:,.2f} €")
-                
-                st.markdown("### 📋 Сводный результат")
-                st.dataframe(df_all, use_container_width=True)
-
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    df_all.to_excel(writer, index=False, sheet_name='Все транзакции')
-                output.seek(0)
-
-                st.download_button(
-                    label="📥 **Скачать сводный Excel**",
-                    data=output,
-                    file_name=f"сводка_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
