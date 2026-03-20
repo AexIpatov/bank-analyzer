@@ -3,14 +3,6 @@ import io
 import os
 import tempfile
 from datetime import datetime
-import pdfplumber
-
-# Импортируем парсеры
-from parsers.paysera_pdf_parser import parse_paysera_pdf, can_parse as paysera_pdf_can_parse
-from parsers.paysera_pdfplumber_parser import parse_paysera_pdfplumber, can_parse as paysera_pdfplumber_can_parse
-from parsers.paysera_excel_parser import parse_paysera_excel, can_parse as paysera_excel_can_parse
-from parsers.n26_parser import parse_n26, can_parse as n26_can_parse
-from parsers.unicredit_parser import parse_unicredit, can_parse as unicredit_can_parse
 from transaction_parser import TransactionParser
 
 
@@ -30,40 +22,13 @@ class ExcelExporter:
             tmp_path = tmp_file.name
         
         try:
-            # Определяем тип файла и выбираем парсер
-            
-            # 1. Проверяем PDF-файлы Paysera
-            if file_name.lower().endswith('.pdf'):
-                if paysera_pdf_can_parse(file_name):
-                    transactions = parse_paysera_pdf(tmp_path)
-                    if transactions:
-                        return self._enrich_transactions(transactions)
-                
-                if paysera_pdfplumber_can_parse(file_name):
-                    transactions = parse_paysera_pdfplumber(tmp_path)
-                    if transactions:
-                        return self._enrich_transactions(transactions)
-            
-            # 2. Проверяем Excel-файлы Paysera
-            if file_name.lower().endswith(('.xls', '.xlsx')):
-                if paysera_excel_can_parse(file_name):
-                    transactions = parse_paysera_excel(tmp_path)
-                    if transactions:
-                        return self._enrich_transactions(transactions)
-            
-            # 3. Проверяем другие банки
-            if n26_can_parse(file_name):
-                transactions = parse_n26(tmp_path)
+            # Проверяем Excel-файлы Paysera по имени файла
+            if file_name.lower().endswith(('.xls', '.xlsx')) and 'paysera' in file_name.lower():
+                transactions = self._parse_paysera_excel(tmp_path, file_name)
                 if transactions:
                     return self._enrich_transactions(transactions)
             
-            if unicredit_can_parse(file_name):
-                transactions = parse_unicredit(tmp_path)
-                if transactions:
-                    return self._enrich_transactions(transactions)
-            
-            # 4. Если ни один специализированный парсер не подошел,
-            # пробуем универсальный парсер
+            # Универсальный парсер для других Excel/CSV файлов
             if file_name.lower().endswith(('.xls', '.xlsx', '.csv')):
                 transactions = self._parse_generic_excel(tmp_path, file_name)
                 if transactions:
@@ -75,18 +40,94 @@ class ExcelExporter:
             print(f"Ошибка при парсинге файла {file_name}: {e}")
             return []
         finally:
-            # Удаляем временный файл
             try:
                 os.unlink(tmp_path)
             except:
                 pass
+    
+    def _parse_paysera_excel(self, file_path, file_name):
+        """
+        Специальный парсер для Excel-выписок Paysera
+        """
+        try:
+            # Читаем Excel файл
+            df = pd.read_excel(file_path, sheet_name=0, header=None)
+            
+            # Ищем строку с заголовками
+            header_row = None
+            for idx, row in df.iterrows():
+                row_text = ' '.join(str(v) for v in row.values if pd.notna(v))
+                if 'Date and time' in row_text and 'Amount and currency' in row_text:
+                    header_row = idx
+                    break
+            
+            if header_row is None:
+                return []
+            
+            # Читаем данные, начиная со строки заголовков
+            df_data = pd.read_excel(
+                file_path, 
+                sheet_name=0, 
+                header=header_row,
+                dtype=str
+            )
+            
+            transactions = []
+            
+            for _, row in df_data.iterrows():
+                # Проверяем, что строка содержит данные
+                if pd.isna(row.get('Date and time', pd.NA)):
+                    continue
+                
+                # Парсим дату
+                date_str = str(row['Date and time'])
+                date = date_str[:10] if len(date_str) >= 10 else date_str
+                
+                # Парсим сумму
+                amount_str = str(row.get('Amount and currency', '0'))
+                amount = 0
+                try:
+                    # Извлекаем число
+                    import re
+                    amount_match = re.search(r'([-]?\d+(?:[.,]\d+)?)', amount_str)
+                    if amount_match:
+                        amount = float(amount_match.group(1).replace(',', '.'))
+                except:
+                    amount = 0
+                
+                # Определяем знак суммы по столбцу Credit/Debit
+                cd = str(row.get('Credit/Debit', '')).upper()
+                if cd == 'D' and amount > 0:
+                    amount = -amount
+                
+                # Описание
+                description = str(row.get('Purpose of payment', ''))
+                
+                transaction = {
+                    'date': date,
+                    'amount': amount,
+                    'currency': 'EUR',
+                    'account_name': os.path.splitext(file_name)[0],
+                    'description': description,
+                    'article_name': '',
+                    'article_code': '',
+                    'direction': '',
+                    'subdirection': ''
+                }
+                
+                transactions.append(transaction)
+            
+            return transactions
+            
+        except Exception as e:
+            print(f"Ошибка при парсинге Paysera Excel: {e}")
+            return []
     
     def _parse_generic_excel(self, file_path, file_name):
         """
         Универсальный парсер для Excel/CSV файлов
         """
         try:
-            # Определяем расширение
             if file_name.lower().endswith('.csv'):
                 df = pd.read_csv(file_path, encoding='utf-8')
             else:
@@ -159,7 +200,6 @@ class ExcelExporter:
         if not transactions:
             return None
         
-        # Создаем DataFrame
         df = pd.DataFrame([{
             'Дата': t.get('date', ''),
             'Сумма': t.get('amount', 0),
@@ -175,7 +215,6 @@ class ExcelExporter:
             df.to_excel(output_path, index=False, sheet_name='Транзакции')
             return output_path
         else:
-            # Возвращаем BytesIO объект
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df.to_excel(writer, index=False, sheet_name='Транзакции')
