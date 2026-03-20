@@ -54,101 +54,57 @@ class ExcelExporter:
             # Читаем Excel с заголовками (заголовки на 3-й строке, индекс 2)
             df = pd.read_excel(file_path, sheet_name=0, header=2)
             
-            print(f"=== ОТЛАДКА: Читаем структурированный Excel ===")
-            print(f"Найдены столбцы: {list(df.columns)}")
-            print(f"Всего строк: {len(df)}")
+            print(f"=== ПАРСЕР PAYSERA: Найдено столбцов: {list(df.columns)} ===")
+            print(f"Всего строк с данными: {len(df)}")
             
             transactions = []
             
-            # Ищем нужные столбцы
-            date_col = None
-            amount_col = None
-            type_col = None
-            desc_col = None
-            recipient_col = None
-            
-            for col in df.columns:
-                col_str = str(col).lower()
-                if 'date' in col_str and 'time' in col_str:
-                    date_col = col
-                elif 'amount' in col_str and 'currency' in col_str:
-                    amount_col = col
-                elif 'credit/debit' in col_str:
-                    type_col = col
-                elif 'purpose' in col_str:
-                    desc_col = col
-                elif 'recipient' in col_str or 'payer' in col_str:
-                    recipient_col = col
-            
-            print(f"Найден столбец даты: {date_col}")
-            print(f"Найден столбец суммы: {amount_col}")
-            print(f"Найден столбец типа: {type_col}")
-            print(f"Найден столбец описания: {desc_col}")
-            
-            if date_col and amount_col:
-                for idx, row in df.iterrows():
+            # Проходим по всем строкам
+            for idx, row in df.iterrows():
+                # Пропускаем пустые строки
+                if pd.isna(row.iloc[0]) and pd.isna(row.iloc[1]):
+                    continue
+                
+                # Получаем дату (столбец 3 - Date and time)
+                date_str = str(row.iloc[3]) if len(row) > 3 else ""
+                date = date_str[:10] if len(date_str) >= 10 else ""
+                
+                # Получаем сумму (столбец 7 - Amount and currency)
+                amount_str = str(row.iloc[7]) if len(row) > 7 else ""
+                amount = 0
+                amount_match = re.search(r'([-]?\d+[.,]?\d*)', amount_str)
+                if amount_match:
                     try:
-                        # Пропускаем пустые строки
-                        if pd.isna(row[date_col]) and pd.isna(row[amount_col]):
-                            continue
-                        
-                        # Парсим дату
-                        date_str = str(row[date_col])
-                        date = date_str[:10] if len(date_str) >= 10 else date_str
-                        
-                        # Парсим сумму
-                        amount_str = str(row[amount_col])
+                        amount = float(amount_match.group(1).replace(',', '.'))
+                    except:
                         amount = 0
-                        # Извлекаем число (например, "6000" или "-5" или "6000 EUR")
-                        amount_match = re.search(r'([-]?\d+[.,]?\d*)', amount_str)
-                        if amount_match:
-                            try:
-                                amount = float(amount_match.group(1).replace(',', '.'))
-                            except:
-                                amount = 0
-                        
-                        # Определяем знак по столбцу Credit/Debit
-                        if type_col and pd.notna(row[type_col]):
-                            type_val = str(row[type_col]).upper()
-                            if 'D' in type_val:
-                                amount = -abs(amount)
-                            elif 'C' in type_val:
-                                amount = abs(amount)
-                        else:
-                            # Если нет столбца типа, проверяем описание или тип транзакции
-                            # Для строки "Commission fee" - это расход
-                            transaction_type = str(row.get('Type', '')).lower()
-                            if 'commission' in transaction_type or 'fee' in transaction_type:
-                                amount = -abs(amount)
-                        
-                        # Описание
-                        description = ''
-                        if desc_col and pd.notna(row[desc_col]):
-                            description = str(row[desc_col])
-                        elif recipient_col and pd.notna(row[recipient_col]):
-                            description = str(row[recipient_col])
-                        else:
-                            description = f"Транзакция {date}"
-                        
-                        transaction = {
-                            'date': date,
-                            'amount': amount,
-                            'currency': 'EUR',
-                            'account_name': os.path.splitext(file_name)[0],
-                            'description': description[:200],
-                            'article_name': '',
-                            'article_code': '',
-                            'direction': '',
-                            'subdirection': ''
-                        }
-                        transactions.append(transaction)
-                        print(f"Найдена транзакция {len(transactions)}: {date} | {amount} | {description[:50]}")
-                        
-                    except Exception as e:
-                        print(f"Ошибка в строке {idx}: {e}")
-                        continue
+                
+                # Определяем знак по типу транзакции (столбец 0 - Type)
+                type_val = str(row.iloc[0]).lower() if len(row) > 0 else ""
+                if 'commission' in type_val or 'fee' in type_val:
+                    amount = -abs(amount)
+                
+                # Получаем описание (столбец 4 - Recipient / Payer)
+                description = str(row.iloc[4]) if len(row) > 4 and pd.notna(row.iloc[4]) else ""
+                if not description:
+                    description = type_val
+                
+                if date and amount != 0:
+                    transaction = {
+                        'date': date,
+                        'amount': amount,
+                        'currency': 'EUR',
+                        'account_name': os.path.splitext(file_name)[0],
+                        'description': description[:200],
+                        'article_name': '',
+                        'article_code': '',
+                        'direction': '',
+                        'subdirection': ''
+                    }
+                    transactions.append(transaction)
+                    print(f"Найдена транзакция: {date} | {amount} | {description[:50]}")
             
-            print(f"Всего найдено транзакций: {len(transactions)}")
+            print(f"Всего найдено транзакций в Paysera: {len(transactions)}")
             return transactions
             
         except Exception as e:
