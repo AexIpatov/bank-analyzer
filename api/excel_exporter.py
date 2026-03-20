@@ -2,6 +2,7 @@ import pandas as pd
 import io
 import os
 import tempfile
+import re
 from datetime import datetime
 from transaction_parser import TransactionParser
 
@@ -22,7 +23,7 @@ class ExcelExporter:
             tmp_path = tmp_file.name
         
         try:
-            # Проверяем Excel-файлы Paysera по имени файла
+            # Проверяем Excel-файлы Paysera
             if file_name.lower().endswith(('.xls', '.xlsx')) and 'paysera' in file_name.lower():
                 transactions = self._parse_paysera_excel(tmp_path, file_name)
                 if transactions:
@@ -47,77 +48,66 @@ class ExcelExporter:
     
     def _parse_paysera_excel(self, file_path, file_name):
         """
-        Специальный парсер для Excel-выписок Paysera
+        Парсер для Excel-выписок Paysera (ищет строки с датами)
         """
         try:
-            # Читаем Excel файл
+            # Читаем весь Excel файл как текст
             df = pd.read_excel(file_path, sheet_name=0, header=None)
-            
-            # Ищем строку с заголовками
-            header_row = None
-            for idx, row in df.iterrows():
-                row_text = ' '.join(str(v) for v in row.values if pd.notna(v))
-                if 'Date and time' in row_text and 'Amount and currency' in row_text:
-                    header_row = idx
-                    break
-            
-            if header_row is None:
-                return []
-            
-            # Читаем данные, начиная со строки заголовков
-            df_data = pd.read_excel(
-                file_path, 
-                sheet_name=0, 
-                header=header_row,
-                dtype=str
-            )
             
             transactions = []
             
-            for _, row in df_data.iterrows():
-                # Проверяем, что строка содержит данные
-                if pd.isna(row.get('Date and time', pd.NA)):
-                    continue
+            for idx, row in df.iterrows():
+                # Объединяем все ячейки строки в одну строку
+                row_text = ' '.join(str(v) for v in row.values if pd.notna(v))
                 
-                # Парсим дату
-                date_str = str(row['Date and time'])
-                date = date_str[:10] if len(date_str) >= 10 else date_str
+                # Ищем дату в формате YYYY-MM-DD
+                date_match = re.search(r'(\d{4}-\d{2}-\d{2})', row_text)
                 
-                # Парсим сумму
-                amount_str = str(row.get('Amount and currency', '0'))
-                amount = 0
-                try:
-                    # Извлекаем число
-                    import re
-                    amount_match = re.search(r'([-]?\d+(?:[.,]\d+)?)', amount_str)
+                if date_match:
+                    date = date_match.group(1)
+                    
+                    # Ищем сумму (число с плавающей точкой)
+                    # Ищем числа от 0.01 до 999999.99
+                    amount_match = re.search(r'(\d+[.,]\d{2})', row_text)
+                    
                     if amount_match:
-                        amount = float(amount_match.group(1).replace(',', '.'))
-                except:
-                    amount = 0
-                
-                # Определяем знак суммы по столбцу Credit/Debit
-                cd = str(row.get('Credit/Debit', '')).upper()
-                if cd == 'D' and amount > 0:
-                    amount = -amount
-                
-                # Описание
-                description = str(row.get('Purpose of payment', ''))
-                
-                transaction = {
-                    'date': date,
-                    'amount': amount,
-                    'currency': 'EUR',
-                    'account_name': os.path.splitext(file_name)[0],
-                    'description': description,
-                    'article_name': '',
-                    'article_code': '',
-                    'direction': '',
-                    'subdirection': ''
-                }
-                
-                transactions.append(transaction)
+                        amount_str = amount_match.group(1).replace(',', '.')
+                        try:
+                            amount = float(amount_str)
+                        except:
+                            amount = 0
+                        
+                        # Определяем знак: если есть " D " или "Debit" или "Commission fee" - это расход
+                        if ' D ' in row_text or ' D\t' in row_text or 'Debit' in row_text or 'Commission fee' in row_text:
+                            amount = -amount
+                        
+                        # Описание: всё, что после даты до суммы
+                        description = row_text[:300]
+                        
+                        transaction = {
+                            'date': date,
+                            'amount': amount,
+                            'currency': 'EUR',
+                            'account_name': os.path.splitext(file_name)[0],
+                            'description': description,
+                            'article_name': '',
+                            'article_code': '',
+                            'direction': '',
+                            'subdirection': ''
+                        }
+                        transactions.append(transaction)
             
-            return transactions
+            # Удаляем дубликаты (если одна транзакция попала дважды)
+            seen = set()
+            unique_transactions = []
+            for t in transactions:
+                key = (t['date'], t['amount'], t['description'][:50])
+                if key not in seen:
+                    seen.add(key)
+                    unique_transactions.append(t)
+            
+            print(f"Найдено {len(unique_transactions)} транзакций в Paysera файле")
+            return unique_transactions
             
         except Exception as e:
             print(f"Ошибка при парсинге Paysera Excel: {e}")
