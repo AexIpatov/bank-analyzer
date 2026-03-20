@@ -1,0 +1,20 @@
+# Виртуальное окружение
+venv/
+__pycache__/
+*.pyc
+
+# Фронтенд зависимости
+frontend/node_modules/
+frontend/.next/
+
+# Результаты обработки
+exports/*.xlsx
+uploads/results/*.xlsx
+
+# Временные файлы
+temp/
+*.tmp
+
+# Системные файлы
+.DS_Store
+Thumbs.db
