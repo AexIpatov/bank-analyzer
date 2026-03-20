@@ -1,0 +1,5 @@
+[server]
+maxUploadSize = 200
+
+[runner]
+pythonVersion = "3.13"
