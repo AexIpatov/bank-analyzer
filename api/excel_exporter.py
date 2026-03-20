@@ -48,56 +48,89 @@ class ExcelExporter:
     
     def _parse_paysera_excel(self, file_path, file_name):
         """
-        Парсер для Excel-выписок Paysera (ищет строки с датами)
+        Парсер для Excel-выписок Paysera (с отладкой)
         """
         try:
-            # Читаем весь Excel файл как текст
-            df = pd.read_excel(file_path, sheet_name=0, header=None)
+            # Пробуем прочитать Excel с разными параметрами
+            try:
+                df = pd.read_excel(file_path, sheet_name=0, header=None, engine='openpyxl')
+                print("Файл прочитан с engine='openpyxl'")
+            except Exception as e1:
+                print(f"Ошибка с openpyxl: {e1}, пробуем без engine")
+                df = pd.read_excel(file_path, sheet_name=0, header=None)
+            
+            print(f"\n=== ОТЛАДКА: Файл {file_name} ===")
+            print(f"Всего строк в файле: {len(df)}")
+            print(f"Всего столбцов: {len(df.columns)}")
+            
+            # Выводим первые 20 строк для отладки
+            print("\n--- Первые 20 строк файла ---")
+            for idx in range(min(20, len(df))):
+                row_text = ' '.join(str(v) for v in df.iloc[idx].values if pd.notna(v))
+                print(f"Строка {idx}: {row_text[:500]}")
+            print("--- Конец вывода строк ---\n")
             
             transactions = []
+            found_dates = 0
+            found_amounts = 0
             
             for idx, row in df.iterrows():
-                # Объединяем все ячейки строки в одну строку
+                # Объединяем все ячейки строки
                 row_text = ' '.join(str(v) for v in row.values if pd.notna(v))
+                
+                # Пропускаем пустые строки
+                if not row_text.strip():
+                    continue
                 
                 # Ищем дату в формате YYYY-MM-DD
                 date_match = re.search(r'(\d{4}-\d{2}-\d{2})', row_text)
                 
                 if date_match:
+                    found_dates += 1
                     date = date_match.group(1)
                     
-                    # Ищем сумму (число с плавающей точкой)
-                    # Ищем числа от 0.01 до 999999.99
+                    # Ищем сумму (число с копейками)
                     amount_match = re.search(r'(\d+[.,]\d{2})', row_text)
                     
                     if amount_match:
+                        found_amounts += 1
                         amount_str = amount_match.group(1).replace(',', '.')
                         try:
                             amount = float(amount_str)
-                        except:
-                            amount = 0
-                        
-                        # Определяем знак: если есть " D " или "Debit" или "Commission fee" - это расход
-                        if ' D ' in row_text or ' D\t' in row_text or 'Debit' in row_text or 'Commission fee' in row_text:
-                            amount = -amount
-                        
-                        # Описание: всё, что после даты до суммы
-                        description = row_text[:300]
-                        
-                        transaction = {
-                            'date': date,
-                            'amount': amount,
-                            'currency': 'EUR',
-                            'account_name': os.path.splitext(file_name)[0],
-                            'description': description,
-                            'article_name': '',
-                            'article_code': '',
-                            'direction': '',
-                            'subdirection': ''
-                        }
-                        transactions.append(transaction)
+                            
+                            # Определяем знак: расход или доход
+                            # Проверяем наличие меток расхода
+                            if ' D ' in row_text or ' D\t' in row_text or ' D' in row_text[-3:] or 'Debit' in row_text or 'Commission fee' in row_text:
+                                amount = -amount
+                                sign = "РАСХОД (-)"
+                            else:
+                                sign = "ДОХОД (+)"
+                            
+                            # Описание: берем часть строки
+                            description = row_text[:300]
+                            
+                            transaction = {
+                                'date': date,
+                                'amount': amount,
+                                'currency': 'EUR',
+                                'account_name': os.path.splitext(file_name)[0],
+                                'description': description,
+                                'article_name': '',
+                                'article_code': '',
+                                'direction': '',
+                                'subdirection': ''
+                            }
+                            transactions.append(transaction)
+                            print(f"✅ Строка {idx}: {date} | {amount} ({sign}) | {description[:80]}...")
+                        except Exception as e:
+                            print(f"❌ Строка {idx}: ошибка при парсинге суммы '{amount_str}': {e}")
             
-            # Удаляем дубликаты (если одна транзакция попала дважды)
+            print(f"\n=== РЕЗУЛЬТАТ ===")
+            print(f"Найдено строк с датами: {found_dates}")
+            print(f"Найдено строк с суммами: {found_amounts}")
+            print(f"Создано транзакций: {len(transactions)}")
+            
+            # Удаляем дубликаты
             seen = set()
             unique_transactions = []
             for t in transactions:
@@ -106,11 +139,15 @@ class ExcelExporter:
                     seen.add(key)
                     unique_transactions.append(t)
             
-            print(f"Найдено {len(unique_transactions)} транзакций в Paysera файле")
+            print(f"После удаления дубликатов: {len(unique_transactions)} транзакций")
+            print("=== Конец отладки ===\n")
+            
             return unique_transactions
             
         except Exception as e:
-            print(f"Ошибка при парсинге Paysera Excel: {e}")
+            print(f"ОШИБКА при парсинге Paysera Excel: {e}")
+            import traceback
+            traceback.print_exc()
             return []
     
     def _parse_generic_excel(self, file_path, file_name):
@@ -121,7 +158,10 @@ class ExcelExporter:
             if file_name.lower().endswith('.csv'):
                 df = pd.read_csv(file_path, encoding='utf-8')
             else:
-                df = pd.read_excel(file_path, engine='openpyxl')
+                try:
+                    df = pd.read_excel(file_path, engine='openpyxl')
+                except:
+                    df = pd.read_excel(file_path)
             
             transactions = []
             
