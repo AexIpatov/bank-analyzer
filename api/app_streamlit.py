@@ -1,14 +1,20 @@
 import streamlit as st
 import pandas as pd
 import os
+import tempfile
 import io
+import sys
 from datetime import datetime
 from excel_exporter import ExcelExporter
 
+# ВРЕМЕННАЯ ОТЛАДКА
+st.write("=== ОТЛАДКА: app_streamlit.py загружен ===")
+st.write(f"Python version: {sys.version}")
+
 # === НАСТРОЙКА СТРАНИЦЫ ===
 st.set_page_config(
-    page_title="Аналитик выписок | Финансовый помощник",
-    page_icon="📊",
+    page_title="Аналитик выписок | Финансы",
+    page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -79,7 +85,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# === БОКОВАЯ ПАНЕЛЬ (УЛУЧШЕННАЯ) ===
+# === БОКОВАЯ ПАНЕЛЬ ===
 with st.sidebar:
     st.markdown("### 🧠 О программе")
     st.markdown("""
@@ -128,60 +134,83 @@ with tab1:
     )
 
     if uploaded_file is not None:
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.success(f"✅ **Файл загружен:** `{uploaded_file.name}`")
-        with col2:
-            if st.button("🚀 **Запустить анализ**", key="single_btn", use_container_width=True):
-                with st.spinner("🔄 Анализируем файл... Подождите немного..."):
+        st.success(f"✅ **Файл загружен:** `{uploaded_file.name}`")
+        
+        if st.button("🚀 **Запустить анализ**", key="single_btn", use_container_width=True):
+            with st.spinner("🔄 Анализируем файл... Подождите немного..."):
+                try:
+                    content = uploaded_file.read()
+                    
+                    # ===== ОТЛАДКА =====
+                    st.write("=== ОТЛАДКА: НАЧАЛО АНАЛИЗА ===")
+                    st.write(f"Имя файла: {uploaded_file.name}")
+                    st.write(f"Размер файла: {len(content)} байт")
+                    
+                    # Пробуем прочитать Excel напрямую для отладки
                     try:
-                        content = uploaded_file.read()
-                        transactions = exporter.extract_transactions(content, uploaded_file.name)
-
-                        if transactions:
-                            df = pd.DataFrame([{
-                                'Дата': t.get('date', ''),
-                                'Сумма': t.get('amount', 0),
-                                'Валюта': t.get('currency', 'EUR'),
-                                'Счет': os.path.splitext(uploaded_file.name)[0],
-                                'Статья': t.get('article_name', t.get('article_code', 'Требует уточнения')),
-                                'Направление': t.get('direction', 'Требует уточнения'),
-                                'Субнаправление': t.get('subdirection', ''),
-                                'Описание': t.get('description', '')[:100]
-                            } for t in transactions])
-
-                            # Отображение статистики
-                            st.markdown("---")
-                            col_a, col_b, col_c = st.columns(3)
-                            with col_a:
-                                st.metric("📊 Всего операций", len(transactions))
-                            with col_b:
-                                доход = df[df['Сумма'] > 0]['Сумма'].sum() if len(df[df['Сумма'] > 0]) > 0 else 0
-                                st.metric("📈 Доходы", f"{доход:,.2f} €")
-                            with col_c:
-                                расход = abs(df[df['Сумма'] < 0]['Сумма'].sum()) if len(df[df['Сумма'] < 0]) > 0 else 0
-                                st.metric("📉 Расходы", f"{расход:,.2f} €")
-                            
-                            st.markdown("### 📋 Результат анализа")
-                            st.dataframe(df, use_container_width=True)
-
-                            # Экспорт в Excel
-                            output = io.BytesIO()
-                            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                                df.to_excel(writer, index=False, sheet_name='Транзакции')
-                            output.seek(0)
-
-                            st.download_button(
-                                label="📥 **Скачать Excel**",
-                                data=output,
-                                file_name=f"анализ_{uploaded_file.name}.xlsx",
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                use_container_width=True
-                            )
-                        else:
-                            st.warning("⚠️ Не найдено транзакций в файле. Проверьте формат.")
+                        df_test = pd.read_excel(io.BytesIO(content), header=None)
+                        st.write(f"Excel прочитан успешно, строк: {len(df_test)}")
+                        st.write("Первые 5 строк файла:")
+                        for i in range(min(5, len(df_test))):
+                            row_values = [str(x) for x in df_test.iloc[i].values[:8] if pd.notna(x)]
+                            st.write(f"  Строка {i}: {row_values}")
                     except Exception as e:
-                        st.error(f"❌ Ошибка при обработке: {str(e)}")
+                        st.write(f"Ошибка при чтении Excel: {e}")
+                    
+                    # Вызываем парсер
+                    transactions = exporter.extract_transactions(content, uploaded_file.name)
+                    
+                    st.write(f"Транзакций найдено парсером: {len(transactions) if transactions else 0}")
+                    st.write("=== ОТЛАДКА: КОНЕЦ ===")
+                    # ===== КОНЕЦ ОТЛАДКИ =====
+
+                    if transactions:
+                        df = pd.DataFrame([{
+                            'Дата': t.get('date', ''),
+                            'Сумма': t.get('amount', 0),
+                            'Валюта': t.get('currency', 'EUR'),
+                            'Счет': os.path.splitext(uploaded_file.name)[0],
+                            'Статья': t.get('article_name', t.get('article_code', 'Требует уточнения')),
+                            'Направление': t.get('direction', 'Требует уточнения'),
+                            'Субнаправление': t.get('subdirection', ''),
+                            'Описание': t.get('description', '')[:100]
+                        } for t in transactions])
+
+                        # Отображение статистики
+                        st.markdown("---")
+                        col_a, col_b, col_c = st.columns(3)
+                        with col_a:
+                            st.metric("📊 Всего операций", len(transactions))
+                        with col_b:
+                            доход = df[df['Сумма'] > 0]['Сумма'].sum() if len(df[df['Сумма'] > 0]) > 0 else 0
+                            st.metric("📈 Доходы", f"{доход:,.2f} €")
+                        with col_c:
+                            расход = abs(df[df['Сумма'] < 0]['Сумма'].sum()) if len(df[df['Сумма'] < 0]) > 0 else 0
+                            st.metric("📉 Расходы", f"{расход:,.2f} €")
+                        
+                        st.markdown("### 📋 Результат анализа")
+                        st.dataframe(df, use_container_width=True)
+
+                        # Экспорт в Excel
+                        output = io.BytesIO()
+                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                            df.to_excel(writer, index=False, sheet_name='Транзакции')
+                        output.seek(0)
+
+                        st.download_button(
+                            label="📥 **Скачать Excel**",
+                            data=output,
+                            file_name=f"анализ_{uploaded_file.name}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
+                    else:
+                        st.warning("⚠️ Не найдено транзакций в файле. Проверьте формат.")
+                except Exception as e:
+                    st.error(f"❌ Ошибка при обработке: {str(e)}")
+                    st.write("=== ОТЛАДКА: ОШИБКА ===")
+                    st.write(f"Тип ошибки: {type(e).__name__}")
+                    st.write(f"Текст ошибки: {str(e)}")
 
 # ========== ВКЛАДКА 2: НЕСКОЛЬКО ФАЙЛОВ ==========
 with tab2:
